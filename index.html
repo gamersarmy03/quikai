@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap">
     <style>
         body {
-            background: #0a0a0a; /* Dark black background */
+            background: #0a0a0a;
             color: #fff;
             font-family: 'Poppins', sans-serif;
             margin: 0;
@@ -29,19 +29,18 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 15em; /* Large text like "Grok" */
+            font-size: 15em;
             font-weight: 600;
             text-transform: uppercase;
             background: linear-gradient(90deg, rgba(0, 170, 255, 0.4), rgba(0, 170, 255, 0.1));
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            opacity: 0; /* Start with 0 opacity for animation */
-            text-shadow: 0 0 20px rgba(0, 170, 255, 0.3); /* Subtle glow */
+            opacity: 0;
+            text-shadow: 0 0 20px rgba(0, 170, 255, 0.3);
             z-index: -1;
             pointer-events: none;
-            animation: bgTextFadeIn 2s cubic-bezier(0.22, 1, 0.36, 1) forwards; /* Softer easing for smoother landing */
+            animation: bgTextFadeIn 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
 
         .container {
@@ -116,27 +115,25 @@
             margin: 0 5px;
         }
 
-        /* Fade-in animation for content */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Animation for background text */
         @keyframes bgTextFadeIn {
             0% {
                 opacity: 0;
-                transform: translate(-50%, -30%) scale(0.95); /* Start below and slightly smaller */
+                transform: translate(-50%, -30%) scale(0.95);
             }
             100% {
-                opacity: 0.5; /* Final opacity */
-                transform: translate(-50%, -50%) scale(1); /* End at center and normal size */
+                opacity: 0.5;
+                transform: translate(-50%, -50%) scale(1);
             }
         }
 
         @media (max-width: 600px) {
             .bg-text {
-                font-size: 8em; /* Smaller for mobile */
+                font-size: 8em;
             }
             h1 {
                 font-size: 2.2em;
@@ -170,5 +167,17 @@
     <footer>
         <p>© 2025 Quik AI. All rights reserved. | <a href="privacy-policy.html">Privacy</a> | <a href="privacy-policy.html">Contact</a></p>
     </footer>
+    <script>
+        // Force layout recalculation on load to ensure animation starts correctly
+        window.addEventListener('load', function() {
+            const bgText = document.querySelector('.bg-text');
+            if (bgText) {
+                bgText.style.animation = 'none'; // Reset animation
+                void bgText.offsetWidth; // Trigger reflow
+                bgText.style.animation = 'bgTextFadeIn 2s cubic-bezier(0.22, 1, 0.36, 1) forwards'; // Restart animation
+            }
+        });
+    </script>
+    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92636e5a4c64bfe7',t:'MTc0Mjk1ODM3Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
