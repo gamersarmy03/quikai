@@ -117,74 +117,56 @@
   </div>
 
   <script>
-    const modal = document.getElementById("uploadModal");
-    const viewModal = document.getElementById("viewModal");
-    const popupImg = document.getElementById("popupImg");
-    const feedGrid = document.getElementById("feedGrid");
+async function uploadImages() {
+  const files = document.getElementById("imageFiles").files;
+  const title = document.getElementById("imageTitle").value.trim();
+  const accessKey = "a96JCwaMdXGvAENz";
+  const secretKey = "iI3AdOdxI7ytzWRt";
 
-    function showUploadModal() {
-      modal.style.display = "flex";
-    }
+  if (!files.length || !title) {
+    alert("Please select image(s) and enter a title.");
+    return;
+  }
 
-    function hideUploadModal() {
-      modal.style.display = "none";
-    }
+  for (let file of files) {
+    const timestamp = Date.now();
+    const identifier = `viddit-img-${timestamp}`;
+    const fileName = file.name.replace(/\s+/g, '-');
+    const uploadUrl = `https://s3.us.archive.org/${identifier}/${fileName}`;
 
-    function showImagePopup(src) {
-      popupImg.src = src;
-      viewModal.style.display = "flex";
-    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Authorization", `LOW ${accessKey}:${secretKey}`);
+      xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
+      xhr.setRequestHeader("x-archive-queue-derive", "0");
+      xhr.setRequestHeader("x-archive-meta-title", title);
+      xhr.setRequestHeader("x-archive-meta-mediatype", "image");
 
-    function addImageToFeed(src, title) {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `<img src="${src}" onclick="showImagePopup('${src}')"><div class="card-title">${title}</div>`;
-      feedGrid.prepend(card);
-    }
-
-    async function uploadImages() {
-      const files = document.getElementById("imageFiles").files;
-      const title = document.getElementById("imageTitle").value;
-
-      if (!files.length || !title) {
-        alert("Please select images and enter a title.");
-        return;
-      }
-
-      const accessKey = "a96JCwaMdXGvAENz";
-      const secretKey = "iI3AdOdxI7ytzWRt";
-
-      for (let file of files) {
-        const itemName = `viddit-${Date.now()}-${file.name.replace(/\s/g, '')}`;
-        const formData = new FormData();
-
-        formData.append("accesskey", accessKey);
-        formData.append("secret", secretKey);
-        formData.append("file", file);
-        formData.append("name", itemName);
-        formData.append("title", title);
-        formData.append("mediatype", "image");
-        formData.append("collection", "opensource_media");
-
-        try {
-          const res = await fetch("https://archive.org/submit/", {
-            method: "POST",
-            body: formData
-          });
-
-          if (res.ok) {
-            const imageUrl = `https://archive.org/download/${itemName}/${file.name}`;
-            addImageToFeed(imageUrl, title);
-          } else {
-            alert("Upload failed");
-          }
-        } catch (err) {
-          alert("Upload error: " + err.message);
+      xhr.onload = () => {
+        if (xhr.status === 200 || xhr.status === 201) {
+          const imageUrl = `https://archive.org/download/${identifier}/${fileName}`;
+          addImageToFeed(imageUrl, title);
+        } else {
+          alert("Upload failed: " + xhr.statusText);
         }
-      }
+      };
 
-      hideUploadModal();
-    }
-  </script>
+      xhr.onerror = () => {
+        alert("Upload error: Check your connection.");
+      };
+
+      xhr.send(reader.result);
+    };
+    reader.onerror = () => {
+      alert("Failed to read file.");
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  hideUploadModal();
+}
+</script>
 </body>
 </html>
