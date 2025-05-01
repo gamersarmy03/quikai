@@ -56,7 +56,7 @@
     .viewer {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       display: none;
       justify-content: center;
       align-items: center;
@@ -96,7 +96,23 @@
     }
     .viewer img {
       max-width: 90vw;
-      max-height: 90vh;
+      max-height: 80vh;
+    }
+    .viewer-controls {
+      margin-top: 1rem;
+    }
+    .viewer-controls button {
+      background: #444;
+      color: white;
+      padding: 0.5rem 1rem;
+      margin: 0 0.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #albumTitle {
+      margin-top: 0.5rem;
+      font-size: 1rem;
     }
   </style>
 </head>
@@ -115,21 +131,28 @@
       <span class="close" onclick="closeUpload()">×</span>
       <h3>Upload Image(s)</h3>
       <input type="file" id="imageInput" multiple accept="image/*">
-      <input type="text" id="imageTitle" placeholder="Enter title">
+      <input type="text" id="imageTitle" placeholder="Enter album title">
       <button onclick="uploadImages()">Upload</button>
     </div>
   </div>
 
-  <!-- Image Viewer -->
-  <div class="viewer" id="imageViewer" onclick="this.style.display='none'">
-    <img id="viewImage" src="" alt="Full View">
+  <!-- Album Viewer -->
+  <div class="viewer" id="albumViewer" style="flex-direction: column; align-items: center;">
+    <span class="close" onclick="document.getElementById('albumViewer').style.display='none'">×</span>
+    <img id="albumImage" src="">
+    <div id="albumTitle"></div>
+    <div class="viewer-controls">
+      <button onclick="prevImage()">◀ Prev</button>
+      <button onclick="nextImage()">Next ▶</button>
+    </div>
   </div>
 
   <script>
     const feed = document.getElementById('feed');
     const uploadModal = document.getElementById('uploadModal');
-    const imageViewer = document.getElementById('imageViewer');
-    const viewImage = document.getElementById('viewImage');
+    let currentAlbum = [];
+    let currentIndex = 0;
+    let currentTitle = "";
 
     function openUpload() {
       uploadModal.style.display = 'flex';
@@ -137,98 +160,113 @@
 
     function closeUpload() {
       uploadModal.style.display = 'none';
+      document.getElementById('imageInput').value = "";
+      document.getElementById('imageTitle').value = "";
     }
 
-    function showViewer(src) {
-      viewImage.src = src;
-      imageViewer.style.display = 'flex';
+    function addAlbumToFeed(images, title) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const preview = document.createElement('img');
+      preview.src = images[0];
+      preview.alt = title;
+      preview.onclick = () => openAlbumViewer(images, title);
+
+      const caption = document.createElement('div');
+      caption.className = 'card-title';
+      caption.textContent = `${title} (${images.length} image${images.length > 1 ? 's' : ''})`;
+
+      card.appendChild(preview);
+      card.appendChild(caption);
+      feed.prepend(card);
     }
 
-    function addToFeed(src, title) {
-  const card = document.createElement('div');
-  card.className = 'card';
+    function openAlbumViewer(images, title) {
+      currentAlbum = images;
+      currentTitle = title;
+      currentIndex = 0;
+      updateAlbumViewer();
+      document.getElementById("albumViewer").style.display = "flex";
+    }
 
-  const img = document.createElement('img');
-  img.src = src;
-  img.alt = title;
-  img.onclick = () => showViewer(src);
+    function updateAlbumViewer() {
+      const viewImg = document.getElementById("albumImage");
+      const caption = document.getElementById("albumTitle");
+      viewImg.src = currentAlbum[currentIndex];
+      caption.textContent = `${currentTitle} (${currentIndex + 1}/${currentAlbum.length})`;
+    }
 
-  const caption = document.createElement('div');
-  caption.className = 'card-title';
-  caption.textContent = title;
+    function nextImage() {
+      if (currentIndex < currentAlbum.length - 1) {
+        currentIndex++;
+        updateAlbumViewer();
+      }
+    }
 
-  card.appendChild(img);
-  card.appendChild(caption);
-  feed.prepend(card);
-}
+    function prevImage() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        updateAlbumViewer();
+      }
+    }
 
     async function uploadImages() {
-    const files = document.getElementById('imageInput').files;
-    const title = document.getElementById('imageTitle').value.trim();
-    const feed = document.getElementById('feed');
+      const files = document.getElementById('imageInput').files;
+      const title = document.getElementById('imageTitle').value.trim();
+      const accessKey = "a96JCwaMdXGvAENz";
+      const secretKey = "iI3AdOdxI7ytzWRt";
 
-    const accessKey = "a96JCwaMdXGvAENz";
-    const secretKey = "iI3AdOdxI7ytzWRt";
+      if (!files.length || !title) {
+        alert("Please select image(s) and enter a title.");
+        return;
+      }
 
-    if (!files.length || !title) {
-      alert("Please select image(s) and enter a title.");
-      return;
+      const identifier = `album-${Date.now()}`;
+      const imageUrls = [];
+
+      for (const file of files) {
+        const fileName = file.name.replace(/\s+/g, '-');
+        const uploadUrl = `https://s3.us.archive.org/${identifier}/${fileName}`;
+        const reader = new FileReader();
+
+        await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", uploadUrl, true);
+            xhr.setRequestHeader("Authorization", `LOW ${accessKey}:${secretKey}`);
+            xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
+            xhr.setRequestHeader("x-archive-queue-derive", "0");
+            xhr.setRequestHeader("x-archive-meta-title", title);
+            xhr.setRequestHeader("x-archive-meta-mediatype", "image");
+
+            xhr.onload = () => {
+              if (xhr.status === 200 || xhr.status === 201) {
+                const imageUrl = `https://archive.org/download/${identifier}/${fileName}`;
+                imageUrls.push(imageUrl);
+                resolve();
+              } else {
+                alert("Upload failed: " + xhr.statusText);
+                reject();
+              }
+            };
+
+            xhr.onerror = () => {
+              alert("Network error during upload.");
+              reject();
+            };
+
+            xhr.send(reader.result);
+          };
+
+          reader.onerror = () => reject(reader.error);
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      addAlbumToFeed(imageUrls, title);
+      closeUpload();
     }
-
-    for (const file of files) {
-      const identifier = `img-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const fileName = file.name.replace(/\s+/g, '-');
-      const uploadUrl = `https://s3.us.archive.org/${identifier}/${fileName}`;
-
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        const arrayBuffer = reader.result;
-        const xhr = new XMLHttpRequest();
-
-        xhr.open("PUT", uploadUrl, true);
-        xhr.setRequestHeader("Authorization", `LOW ${accessKey}:${secretKey}`);
-        xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
-        xhr.setRequestHeader("x-archive-queue-derive", "0");
-        xhr.setRequestHeader("x-archive-meta-title", title);
-        xhr.setRequestHeader("x-archive-meta-mediatype", "image");
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 100);
-            console.log(`Uploading ${fileName}: ${percent}%`);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status === 200 || xhr.status === 201) {
-            const imageUrl = `https://archive.org/download/${identifier}/${fileName}`;
-            console.log("Uploaded:", imageUrl);
-            addToFeed(imageUrl, title);
-          } else {
-            console.error("Upload failed:", xhr.statusText);
-            alert("Upload failed.");
-          }
-        };
-
-        xhr.onerror = () => {
-          console.error("XHR error occurred.");
-          alert("Network error during upload.");
-        };
-
-        xhr.send(arrayBuffer);
-      };
-
-      reader.onerror = () => {
-        console.error("File read error:", reader.error);
-        alert("Error reading file.");
-      };
-
-      reader.readAsArrayBuffer(file);
-    }
-
-    closeUpload();
-  }
-</script>
+  </script>
 </body>
 </html>
