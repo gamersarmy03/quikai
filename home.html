@@ -1,184 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Viddit</title>
   <style>
     body {
-      background-color: #000;
+      background: #000;
       color: #fff;
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
     }
     header {
+      background: #111;
+      padding: 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 15px 20px;
-      background-color: #111;
     }
     .logo {
-      font-size: 28px;
+      font-size: 1.5rem;
       font-weight: bold;
       color: #a259ff;
     }
     .upload-btn {
-      background-color: #a259ff;
-      color: white;
-      padding: 8px 16px;
+      background: #a259ff;
       border: none;
-      border-radius: 5px;
+      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border-radius: 0.5rem;
       cursor: pointer;
     }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 16px;
-      padding: 20px;
+      gap: 1rem;
+      padding: 1rem;
     }
     .card {
-      background-color: #111;
+      background: #1f1f1f;
       border-radius: 8px;
       overflow: hidden;
       cursor: pointer;
-      position: relative;
     }
     .card img {
       width: 100%;
-      height: auto;
       display: block;
     }
     .card-title {
-      padding: 8px;
-      font-size: 14px;
+      padding: 0.5rem;
+      font-size: 0.9rem;
+      text-align: center;
     }
-    #uploadModal, #viewModal {
+    .modal,
+    .viewer {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8);
       display: none;
-      align-items: center;
       justify-content: center;
-      z-index: 1000;
+      align-items: center;
+      z-index: 999;
     }
     .modal-content {
       background: #222;
-      padding: 20px;
-      border-radius: 10px;
+      padding: 1rem;
+      border-radius: 8px;
+      width: 90%;
       max-width: 400px;
-      width: 100%;
     }
-    .modal-content input,
-    .modal-content textarea {
+    .modal-content input {
       width: 100%;
-      padding: 10px;
-      margin: 10px 0;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
       background: #333;
       border: none;
+      color: #fff;
+      border-radius: 4px;
+    }
+    .modal-content button {
+      background: #a259ff;
       color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
     }
     .close {
       position: absolute;
-      top: 15px;
-      right: 20px;
-      font-size: 24px;
+      top: 1rem;
+      right: 1rem;
       color: white;
+      font-size: 1.5rem;
       cursor: pointer;
     }
-    .view-img {
+    .viewer img {
       max-width: 90vw;
       max-height: 90vh;
     }
   </style>
 </head>
 <body>
+
   <header>
     <div class="logo">Viddit</div>
-    <button class="upload-btn" onclick="showUploadModal()">Upload</button>
+    <button class="upload-btn" onclick="openUpload()">+</button>
   </header>
 
-  <div class="grid" id="feedGrid"></div>
+  <div class="grid" id="feed"></div>
 
   <!-- Upload Modal -->
-  <div id="uploadModal">
+  <div class="modal" id="uploadModal">
     <div class="modal-content">
-      <span class="close" onclick="hideUploadModal()">&times;</span>
-      <h3>Upload Images</h3>
-      <input type="file" id="imageFiles" multiple accept="image/*">
+      <span class="close" onclick="closeUpload()">×</span>
+      <h3>Upload Image(s)</h3>
+      <input type="file" id="imageInput" multiple accept="image/*">
       <input type="text" id="imageTitle" placeholder="Enter title">
-      <button class="upload-btn" onclick="uploadImages()">Upload</button>
+      <button onclick="uploadImages()">Upload</button>
     </div>
   </div>
 
-  <!-- Image View Modal -->
-  <div id="viewModal" onclick="this.style.display='none'">
-    <img id="popupImg" class="view-img" src="" alt="">
+  <!-- Image Viewer -->
+  <div class="viewer" id="imageViewer" onclick="this.style.display='none'">
+    <img id="viewImage" src="" alt="Full View">
   </div>
 
   <script>
-async function uploadImageToArchive(file, title) {
-    const identifier = `img-${Date.now()}`;
-    const filename = file.name.replace(/\s/g, '');
-    const itemUrl = `https://s3.us.archive.org/${identifier}/${filename}`;
+    const feed = document.getElementById('feed');
+    const uploadModal = document.getElementById('uploadModal');
+    const imageViewer = document.getElementById('imageViewer');
+    const viewImage = document.getElementById('viewImage');
 
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(file);
+    function openUpload() {
+      uploadModal.style.display = 'flex';
+    }
 
-    return new Promise((resolve, reject) => {
+    function closeUpload() {
+      uploadModal.style.display = 'none';
+    }
+
+    function showViewer(src) {
+      viewImage.src = src;
+      imageViewer.style.display = 'flex';
+    }
+
+    function addToFeed(src, title) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<img src="${src}" onclick="showViewer('${src}')"><div class="card-title">${title}</div>`;
+      feed.prepend(card);
+    }
+
+    async function uploadImages() {
+      const files = document.getElementById('imageInput').files;
+      const title = document.getElementById('imageTitle').value.trim();
+
+      const accessKey = "a96JCwaMdXGvAENz";
+      const secretKey = "iI3AdOdxI7ytzWRt";
+
+      if (!files.length || !title) {
+        alert("Please select image(s) and enter a title.");
+        return;
+      }
+
+      for (const file of files) {
+        const identifier = `img-${Date.now()}`;
+        const filename = file.name.replace(/\s+/g, '-');
+        const uploadUrl = `https://s3.us.archive.org/${identifier}/${filename}`;
+        const reader = new FileReader();
+
         reader.onload = () => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("PUT", itemUrl, true);
-            xhr.setRequestHeader("Authorization", "LOW a96JCwaMdXGvAENz:iI3AdOdxI7ytzWRt");
-            xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
-            xhr.setRequestHeader("x-archive-queue-derive", "0");
-            xhr.setRequestHeader("x-archive-meta-title", title);
-            xhr.setRequestHeader("x-archive-meta-mediatype", "image");
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", uploadUrl, true);
+          xhr.setRequestHeader("Authorization", `LOW ${accessKey}:${secretKey}`);
+          xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
+          xhr.setRequestHeader("x-archive-queue-derive", "0");
+          xhr.setRequestHeader("x-archive-meta-title", title);
+          xhr.setRequestHeader("x-archive-meta-mediatype", "image");
 
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    resolve(`https://archive.org/download/${identifier}/${filename}`);
-                } else {
-                    reject(`Upload failed with status ${xhr.status}`);
-                }
-            };
+          xhr.onload = () => {
+            if (xhr.status === 200 || xhr.status === 201) {
+              const publicUrl = `https://archive.org/download/${identifier}/${filename}`;
+              addToFeed(publicUrl, title);
+            } else {
+              alert("Upload failed: " + xhr.statusText);
+            }
+          };
 
-            xhr.onerror = () => reject("Network error during upload");
-
-            xhr.send(reader.result);
+          xhr.onerror = () => alert("Network error");
+          xhr.send(reader.result);
         };
 
-        reader.onerror = () => reject("File reading error");
-    });
-}
+        reader.readAsArrayBuffer(file);
+      }
 
-async function uploadImages() {
-    const files = document.getElementById("imageFiles").files;
-    const title = document.getElementById("imageTitle").value;
-
-    if (!files.length || !title) {
-        alert("Please select images and enter a title.");
-        return;
+      closeUpload();
     }
+  </script>
 
-    for (const file of files) {
-        try {
-            const imageUrl = await uploadImageToArchive(file, title);
-            addImageToFeed(imageUrl, title);
-        } catch (err) {
-            alert("Upload failed: " + err);
-        }
-    }
-
-    hideUploadModal();
-}
-
-function addImageToFeed(src, title) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `<img src="${src}" onclick="showImagePopup('${src}')"><div class="card-title">${title}</div>`;
-    document.getElementById("feedGrid").prepend(card);
-}
-</script>
 </body>
 </html>
