@@ -148,125 +148,136 @@
   </div>
 
   <script>
-    const feed = document.getElementById('feed');
-    const uploadModal = document.getElementById('uploadModal');
-    let currentAlbum = [];
-    let currentIndex = 0;
-    let currentTitle = "";
+  const feed = document.getElementById('feed');
+  const uploadModal = document.getElementById('uploadModal');
+  let currentAlbum = [];
+  let currentIndex = 0;
+  let currentTitle = "";
 
-    function openUpload() {
-      uploadModal.style.display = 'flex';
-    }
+  function openUpload() {
+    uploadModal.style.display = 'flex';
+  }
 
-    function closeUpload() {
-      uploadModal.style.display = 'none';
-      document.getElementById('imageInput').value = "";
-      document.getElementById('imageTitle').value = "";
-    }
+  function closeUpload() {
+    uploadModal.style.display = 'none';
+    document.getElementById('imageInput').value = "";
+    document.getElementById('imageTitle').value = "";
+  }
 
-    function addAlbumToFeed(images, title) {
-      const card = document.createElement('div');
-      card.className = 'card';
+  function addAlbumToFeed(images, title) {
+    const card = document.createElement('div');
+    card.className = 'card';
 
-      const preview = document.createElement('img');
-      preview.src = images[0];
-      preview.alt = title;
-      preview.onclick = () => openAlbumViewer(images, title);
+    const preview = document.createElement('img');
+    preview.src = images[0];
+    preview.alt = title;
+    preview.onclick = () => openAlbumViewer(images, title);
 
-      const caption = document.createElement('div');
-      caption.className = 'card-title';
-      caption.textContent = `${title} (${images.length} image${images.length > 1 ? 's' : ''})`;
+    const caption = document.createElement('div');
+    caption.className = 'card-title';
+    caption.textContent = `${title} (${images.length} image${images.length > 1 ? 's' : ''})`;
 
-      card.appendChild(preview);
-      card.appendChild(caption);
-      feed.prepend(card);
-    }
+    card.appendChild(preview);
+    card.appendChild(caption);
+    feed.prepend(card);
+  }
 
-    function openAlbumViewer(images, title) {
-      currentAlbum = images;
-      currentTitle = title;
-      currentIndex = 0;
+  function openAlbumViewer(images, title) {
+    currentAlbum = images;
+    currentTitle = title;
+    currentIndex = 0;
+    updateAlbumViewer();
+    document.getElementById("albumViewer").style.display = "flex";
+  }
+
+  function updateAlbumViewer() {
+    const viewImg = document.getElementById("albumImage");
+    const caption = document.getElementById("albumTitle");
+    viewImg.src = currentAlbum[currentIndex];
+    caption.textContent = `${currentTitle} (${currentIndex + 1}/${currentAlbum.length})`;
+  }
+
+  function nextImage() {
+    if (currentIndex < currentAlbum.length - 1) {
+      currentIndex++;
       updateAlbumViewer();
-      document.getElementById("albumViewer").style.display = "flex";
+    }
+  }
+
+  function prevImage() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      updateAlbumViewer();
+    }
+  }
+
+  async function uploadImages() {
+    console.log("Upload started...");
+    const files = document.getElementById('imageInput').files;
+    const title = document.getElementById('imageTitle').value.trim();
+    const accessKey = "a96JCwaMdXGvAENz";
+    const secretKey = "iI3AdOdxI7ytzWRt";
+
+    if (!files.length || !title) {
+      alert("Please select image(s) and enter a title.");
+      return;
     }
 
-    function updateAlbumViewer() {
-      const viewImg = document.getElementById("albumImage");
-      const caption = document.getElementById("albumTitle");
-      viewImg.src = currentAlbum[currentIndex];
-      caption.textContent = `${currentTitle} (${currentIndex + 1}/${currentAlbum.length})`;
+    const identifier = `album-${Date.now()}`;
+    const imageUrls = [];
+
+    for (const file of files) {
+      const fileName = file.name.replace(/\s+/g, '-');
+      const uploadUrl = `https://s3.us.archive.org/${identifier}/${fileName}`;
+      const reader = new FileReader();
+
+      const arrayBuffer = await new Promise((resolve, reject) => {
+        reader.onload = () => {
+          console.log("File loaded:", fileName);
+          resolve(reader.result);
+        };
+        reader.onerror = () => {
+          alert("Failed to read file.");
+          reject(reader.error);
+        };
+        reader.readAsArrayBuffer(file);
+      });
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Authorization", `LOW ${accessKey}:${secretKey}`);
+      xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
+      xhr.setRequestHeader("x-archive-queue-derive", "0");
+      xhr.setRequestHeader("x-archive-meta-title", title);
+      xhr.setRequestHeader("x-archive-meta-mediatype", "image");
+
+      const uploadPromise = new Promise((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status === 200 || xhr.status === 201) {
+            const imageUrl = `https://archive.org/download/${identifier}/${fileName}`;
+            imageUrls.push(imageUrl);
+            console.log("Uploaded:", imageUrl);
+            resolve();
+          } else {
+            alert("Upload failed: " + xhr.statusText);
+            reject();
+          }
+        };
+
+        xhr.onerror = () => {
+          alert("Network error during upload.");
+          reject();
+        };
+      });
+
+      xhr.send(arrayBuffer);
+      await uploadPromise;
     }
 
-    function nextImage() {
-      if (currentIndex < currentAlbum.length - 1) {
-        currentIndex++;
-        updateAlbumViewer();
-      }
-    }
-
-    function prevImage() {
-      if (currentIndex > 0) {
-        currentIndex--;
-        updateAlbumViewer();
-      }
-    }
-
-    async function uploadImages() {
-      const files = document.getElementById('imageInput').files;
-      const title = document.getElementById('imageTitle').value.trim();
-      const accessKey = "a96JCwaMdXGvAENz";
-      const secretKey = "iI3AdOdxI7ytzWRt";
-
-      if (!files.length || !title) {
-        alert("Please select image(s) and enter a title.");
-        return;
-      }
-
-      const identifier = `album-${Date.now()}`;
-      const imageUrls = [];
-
-      for (const file of files) {
-        const fileName = file.name.replace(/\s+/g, '-');
-        const uploadUrl = `https://s3.us.archive.org/${identifier}/${fileName}`;
-        const reader = new FileReader();
-
-        await new Promise((resolve, reject) => {
-          reader.onload = () => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("PUT", uploadUrl, true);
-            xhr.setRequestHeader("Authorization", `LOW ${accessKey}:${secretKey}`);
-            xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
-            xhr.setRequestHeader("x-archive-queue-derive", "0");
-            xhr.setRequestHeader("x-archive-meta-title", title);
-            xhr.setRequestHeader("x-archive-meta-mediatype", "image");
-
-            xhr.onload = () => {
-              if (xhr.status === 200 || xhr.status === 201) {
-                const imageUrl = `https://archive.org/download/${identifier}/${fileName}`;
-                imageUrls.push(imageUrl);
-                resolve();
-              } else {
-                alert("Upload failed: " + xhr.statusText);
-                reject();
-              }
-            };
-
-            xhr.onerror = () => {
-              alert("Network error during upload.");
-              reject();
-            };
-
-            xhr.send(reader.result);
-          };
-
-          reader.onerror = () => reject(reader.error);
-          reader.readAsArrayBuffer(file);
-        });
-      }
-
-      addAlbumToFeed(imageUrls, title);
-      closeUpload();
-    }
-  </script>
+    console.log("All images uploaded:", imageUrls);
+    addAlbumToFeed(imageUrls, title);
+    closeUpload();
+  }
+</script>
 </body>
 </html>
