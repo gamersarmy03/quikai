@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Viddit</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      background-color: #111;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: bold;
+      color: #a259ff;
+    }
+    .upload-btn {
+      background-color: #a259ff;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      padding: 20px;
+    }
+    .card {
+      background-color: #111;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+    }
+    .card img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .card-title {
+      padding: 8px;
+      font-size: 14px;
+    }
+    #uploadModal, #viewModal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 400px;
+      width: 100%;
+    }
+    .modal-content input,
+    .modal-content textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: #333;
+      border: none;
+      color: white;
+    }
+    .close {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-size: 24px;
+      color: white;
+      cursor: pointer;
+    }
+    .view-img {
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Viddit</div>
+    <button class="upload-btn" onclick="showUploadModal()">Upload</button>
+  </header>
+
+  <div class="grid" id="feedGrid"></div>
+
+  <!-- Upload Modal -->
+  <div id="uploadModal">
+    <div class="modal-content">
+      <span class="close" onclick="hideUploadModal()">&times;</span>
+      <h3>Upload Images</h3>
+      <input type="file" id="imageFiles" multiple accept="image/*">
+      <input type="text" id="imageTitle" placeholder="Enter title">
+      <button class="upload-btn" onclick="uploadImages()">Upload</button>
+    </div>
+  </div>
+
+  <!-- Image View Modal -->
+  <div id="viewModal" onclick="this.style.display='none'">
+    <img id="popupImg" class="view-img" src="" alt="">
+  </div>
+
+  <script>
+    const modal = document.getElementById("uploadModal");
+    const viewModal = document.getElementById("viewModal");
+    const popupImg = document.getElementById("popupImg");
+    const feedGrid = document.getElementById("feedGrid");
+
+    function showUploadModal() {
+      modal.style.display = "flex";
+    }
+
+    function hideUploadModal() {
+      modal.style.display = "none";
+    }
+
+    function showImagePopup(src) {
+      popupImg.src = src;
+      viewModal.style.display = "flex";
+    }
+
+    function addImageToFeed(src, title) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `<img src="${src}" onclick="showImagePopup('${src}')"><div class="card-title">${title}</div>`;
+      feedGrid.prepend(card);
+    }
+
+    async function uploadImages() {
+      const files = document.getElementById("imageFiles").files;
+      const title = document.getElementById("imageTitle").value;
+
+      if (!files.length || !title) {
+        alert("Please select images and enter a title.");
+        return;
+      }
+
+      const accessKey = "a96JCwaMdXGvAENz";
+      const secretKey = "iI3AdOdxI7ytzWRt";
+
+      for (let file of files) {
+        const itemName = `viddit-${Date.now()}-${file.name.replace(/\s/g, '')}`;
+        const formData = new FormData();
+
+        formData.append("accesskey", accessKey);
+        formData.append("secret", secretKey);
+        formData.append("file", file);
+        formData.append("name", itemName);
+        formData.append("title", title);
+        formData.append("mediatype", "image");
+        formData.append("collection", "opensource_media");
+
+        try {
+          const res = await fetch("https://archive.org/submit/", {
+            method: "POST",
+            body: formData
+          });
+
+          if (res.ok) {
+            const imageUrl = `https://archive.org/download/${itemName}/${file.name}`;
+            addImageToFeed(imageUrl, title);
+          } else {
+            alert("Upload failed");
+          }
+        } catch (err) {
+          alert("Upload error: " + err.message);
+        }
+      }
+
+      hideUploadModal();
+    }
+  </script>
+</body>
+</html>
