@@ -152,51 +152,72 @@
     }
 
     async function uploadImages() {
-      const files = document.getElementById('imageInput').files;
-      const title = document.getElementById('imageTitle').value.trim();
+    const files = document.getElementById('imageInput').files;
+    const title = document.getElementById('imageTitle').value.trim();
+    const feed = document.getElementById('feed');
 
-      const accessKey = "a96JCwaMdXGvAENz";
-      const secretKey = "iI3AdOdxI7ytzWRt";
+    const accessKey = "a96JCwaMdXGvAENz";
+    const secretKey = "iI3AdOdxI7ytzWRt";
 
-      if (!files.length || !title) {
-        alert("Please select image(s) and enter a title.");
-        return;
-      }
+    if (!files.length || !title) {
+      alert("Please select image(s) and enter a title.");
+      return;
+    }
 
-      for (const file of files) {
-        const identifier = `img-${Date.now()}`;
-        const filename = file.name.replace(/\s+/g, '-');
-        const uploadUrl = `https://s3.us.archive.org/${identifier}/${filename}`;
-        const reader = new FileReader();
+    for (const file of files) {
+      const identifier = `img-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const fileName = file.name.replace(/\s+/g, '-');
+      const uploadUrl = `https://s3.us.archive.org/${identifier}/${fileName}`;
 
-        reader.onload = () => {
-          const xhr = new XMLHttpRequest();
-          xhr.open("PUT", uploadUrl, true);
-          xhr.setRequestHeader("Authorization", `LOW ${accessKey}:${secretKey}`);
-          xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
-          xhr.setRequestHeader("x-archive-queue-derive", "0");
-          xhr.setRequestHeader("x-archive-meta-title", title);
-          xhr.setRequestHeader("x-archive-meta-mediatype", "image");
+      const reader = new FileReader();
 
-          xhr.onload = () => {
-            if (xhr.status === 200 || xhr.status === 201) {
-              const publicUrl = `https://archive.org/download/${identifier}/${filename}`;
-              addToFeed(publicUrl, title);
-            } else {
-              alert("Upload failed: " + xhr.statusText);
-            }
-          };
+      reader.onload = () => {
+        const arrayBuffer = reader.result;
+        const xhr = new XMLHttpRequest();
 
-          xhr.onerror = () => alert("Network error");
-          xhr.send(reader.result);
+        xhr.open("PUT", uploadUrl, true);
+        xhr.setRequestHeader("Authorization", `LOW ${accessKey}:${secretKey}`);
+        xhr.setRequestHeader("x-archive-auto-make-bucket", "1");
+        xhr.setRequestHeader("x-archive-queue-derive", "0");
+        xhr.setRequestHeader("x-archive-meta-title", title);
+        xhr.setRequestHeader("x-archive-meta-mediatype", "image");
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            console.log(`Uploading ${fileName}: ${percent}%`);
+          }
         };
 
-        reader.readAsArrayBuffer(file);
-      }
+        xhr.onload = () => {
+          if (xhr.status === 200 || xhr.status === 201) {
+            const imageUrl = `https://archive.org/download/${identifier}/${fileName}`;
+            console.log("Uploaded:", imageUrl);
+            addToFeed(imageUrl, title);
+          } else {
+            console.error("Upload failed:", xhr.statusText);
+            alert("Upload failed.");
+          }
+        };
 
-      closeUpload();
+        xhr.onerror = () => {
+          console.error("XHR error occurred.");
+          alert("Network error during upload.");
+        };
+
+        xhr.send(arrayBuffer);
+      };
+
+      reader.onerror = () => {
+        console.error("File read error:", reader.error);
+        alert("Error reading file.");
+      };
+
+      reader.readAsArrayBuffer(file);
     }
-  </script>
 
+    closeUpload();
+  }
+</script>
 </body>
 </html>
