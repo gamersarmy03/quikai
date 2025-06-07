@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            flex-direction: column; /* To stack the welcome message and the widget */
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        /* You can add styles for the widget container if needed */
+        .convai-widget-container {
+            margin-top: 30px; /* Space between text and widget */
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Welcome to Your Home Page!</h1>
+
+    <div class="convai-widget-container">
+        <elevenlabs-convai agent-id="agent_01jx4bstg8e3msbrxt8fb1qp9m"></elevenlabs-convai>
+    </div>
+    <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+    </body>
+</html>
